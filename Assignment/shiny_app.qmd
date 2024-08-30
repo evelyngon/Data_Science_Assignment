@@ -1,0 +1,153 @@
+---
+title: "Untitled"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+# Install necessary packages
+if (!require("shiny")) install.packages("shiny", dependencies = TRUE)
+if (!require("shinythemes")) install.packages("shinythemes", dependencies = TRUE)
+if (!require("readxl")) install.packages("readxl", dependencies = TRUE)
+if (!require("ggplot2")) install.packages("ggplot2", dependencies = TRUE)
+if (!require("dplyr")) install.packages("dplyr", dependencies = TRUE)
+if (!require("colourpicker")) install.packages("colourpicker", dependencies = TRUE)
+
+# Load libraries
+library(shiny)
+library(shinythemes)
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(colourpicker)
+
+# Define the UI
+ui <- fluidPage(
+  theme = shinytheme("cerulean"),  # Apply a modern theme
+  
+  # Custom CSS for improved styling
+  tags$head(
+    tags$style(HTML("
+      .custom-title {
+        font-family: 'Arial', sans-serif;
+        font-size: 24px;
+        font-weight: bold;
+        color: #2C3E50;
+        margin-bottom: 20px;
+      }
+      .sidebar {
+        background-color: #F5F5F5;
+        padding: 15px;
+        border-radius: 10px;
+      }
+      .main {
+        background-color: #FFFFFF;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .action-button {
+        background-color: #2980B9;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 10px 15px;
+        margin-top: 10px;
+      }
+      .action-button:hover {
+        background-color: #3498DB;
+      }
+    "))
+  ),
+  
+  div(class = "custom-title", "Flux Sum Stats Glycolysis Visualization"),  # Custom title
+  
+  sidebarLayout(
+    sidebarPanel(
+      class = "sidebar",
+      selectInput("dataset", "Choose Dataset", choices = c("Medium 21500", "Medium 31500", "Medium 41500")),
+      selectInput("plotType", "Select Plot Type", choices = c("Boxplot", "Bar Plot")),
+      textInput("variableFilter", "Filter by Variable (e.g., Glucose):", value = ""),
+      colourInput("plotColor", "Choose Plot Color", value = "blue"),
+      actionButton("updatePlot", "Update Plot", class = "action-button")
+    ),
+    
+    mainPanel(
+      class = "main",
+      plotOutput("dataPlot"),
+      tableOutput("dataSummary")
+    )
+  )
+)
+
+# Define the server logic
+server <- function(input, output, session) {
+  
+  # Reactive expression to load the selected dataset
+  datasetInput <- reactive({
+    switch(input$dataset,
+           "Medium 21500" = read_excel("\\\\atlas.uni.lux\\fstc_sysbio\\0- UserFolders\\Evelyn.GONZALEZ\\Chiara_2024_AKR1A1Deficiency\\TCGAperformAnalyisisSampling\\FluxSumGlycolysis_RAW\\769-P_fluxSumStats_Glycolysis_medium_4_1_VS_21500.xlsx"),
+           "Medium 31500" = read_excel("\\\\atlas.uni.lux\\fstc_sysbio\\0- UserFolders\\Evelyn.GONZALEZ\\Chiara_2024_AKR1A1Deficiency\\TCGAperformAnalyisisSampling\\FluxSumGlycolysis_RAW\\769-P_fluxSumStats_Glycolysis_medium_4_1_VS_31500.xlsx"),
+           "Medium 41500" = read_excel("\\\\atlas.uni.lux\\fstc_sysbio\\0- UserFolders\\Evelyn.GONZALEZ\\Chiara_2024_AKR1A1Deficiency\\TCGAperformAnalyisisSampling\\FluxSumGlycolysis_RAW\\769-P_fluxSumStats_Glycolysis_medium_4_1_VS_41500.xlsx"))
+  })
+  
+  # Reactive expression to filter the dataset based on user input
+  filteredData <- reactive({
+    data <- datasetInput()
+    if (input$variableFilter != "") {
+      data <- data %>% filter(grepl(input$variableFilter, .[[1]], ignore.case = TRUE))
+    }
+    return(data)
+  })
+  
+  # Generate plot based on user input
+  output$dataPlot <- renderPlot({
+    data <- filteredData()
+    
+    # Ensure data has at least two columns for plotting
+    if (ncol(data) < 2) {
+      return(NULL)
+    }
+
+    # Adjust the plotting based on column names and available data
+    column_name <- names(data)[2]  # Using the second column for plotting as an example
+    
+    if (input$plotType == "Boxplot") {
+      ggplot(data, aes(x = as.factor(1), y = .data[[column_name]])) +  # Correct column reference
+        geom_boxplot(color = input$plotColor) +  # Use the chosen color
+        labs(title = paste("Boxplot of", input$variableFilter, "in", input$dataset)) +
+        theme_minimal()
+    } else {
+      ggplot(data, aes(x = as.factor(1), y = .data[[column_name]])) +  # Correct column reference
+        geom_bar(stat = "identity", fill = input$plotColor) +  # Use the chosen color
+        labs(title = paste("Bar Plot of", input$variableFilter, "in", input$dataset)) +
+        theme_minimal()
+    }
+  })
+  
+  # Output data summary
+  output$dataSummary <- renderTable({
+    summary(filteredData())
+  })
+}
+
+# Run the application 
+shinyApp(ui = ui, server = server)
+
+```
+
+You can add options to executable code like this
+
+```{r}
+
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
